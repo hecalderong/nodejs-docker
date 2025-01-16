@@ -1,0 +1,77 @@
+services:
+  # Servicio principal de Node.js
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nodejs_app
+    restart: unless-stopped
+    working_dir: /usr/src/app
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./src:/usr/src/app
+      #   - /usr/src/app/node_modules
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=db
+      - DB_USER=nodejs_user
+      - DB_PASSWORD=user_password
+      - DB_NAME=nodejs_db
+    networks:
+      - nodejs-net
+    depends_on:
+      - db
+    command: /usr/local/bin/init.sh
+
+  # Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: nodejs_nginx
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d/
+    networks:
+      - nodejs-net
+    depends_on:
+      - app
+
+  # Base de datos MySQL
+  db:
+    image: mysql:8.0.27
+    container_name: nodejs_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: nodejs_db
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_PASSWORD: user_password
+      MYSQL_USER: nodejs_user
+    volumes:
+      - db_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - nodejs-net
+
+  # PHPMyAdmin
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: nodejs_phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: db
+      MYSQL_ROOT_PASSWORD: root_password
+    networks:
+      - nodejs-net
+    depends_on:
+      - db
+
+networks:
+  nodejs-net: {}
+
+volumes:
+  db_data: {}
